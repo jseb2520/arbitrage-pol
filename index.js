@@ -273,7 +273,10 @@ const evaluatePairsAcrossDEXs = async () => {
 			await executeTrade(bestTrade, amountToTrade);
 		} else {
 			console.log('No profitable trade found or profit below threshold.');
-            bot.sendMessage(telegramChatId, 'No profitable trade found or profit below threshold.')
+			bot.sendMessage(
+				telegramChatId,
+				'No profitable trade found or profit below threshold.'
+			);
 		}
 	} catch (error) {
 		console.error('Error evaluating pairs across DEXs:', error.message);
@@ -402,7 +405,9 @@ const main = async () => {
 	while (true) {
 		await evaluatePairsAcrossDEXs();
 		await evaluateTriangularArbitrage();
-		await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait 1 minute before the next iteration
+		await new Promise((resolve) =>
+			setTimeout(resolve, parseInt(process.env.TIMEOUT) || 120000)
+		); // Wait 1 minute before the next iteration
 	}
 };
 
