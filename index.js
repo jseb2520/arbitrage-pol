@@ -30,6 +30,10 @@ const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: false});
 const telegramChatId = process.env.TELEGRAM_CHAT_ID;
 
+// Define a minimum profit threshold
+const MINIMUM_PROFIT_THRESHOLD =
+	parseInt(process.env.MINIMUM_PROFIT_THRESHOLD) || 0.01; // Example: $0.01
+
 // Function to fetch top tokens on Polygon from CoinGecko
 const fetchTopTokens = async () => {
 	try {
@@ -189,9 +193,9 @@ const evaluatePairsAcrossDEXs = async () => {
 					);
 					bot.sendMessage(
 						telegramChatId,
-						`Insufficient balance for tokens: \n
-						${token1Address},
-						${token2Address}`
+						`Insufficient balance for tokens:,\n
+							${token1Address},
+							${token2Address}`
 					);
 					continue;
 				}
@@ -257,17 +261,19 @@ const evaluatePairsAcrossDEXs = async () => {
 					amountToTrade
 				);
 
-				if (potentialProfit > bestProfit) {
+				// Execute trade if there is any profit or if it meets the minimum threshold
+				if (potentialProfit > 0) {
 					bestProfit = potentialProfit;
 					bestTrade = bestCurrentTrade;
 				}
 			}
 		}
 
-		if (bestTrade && bestProfit > 0) {
+		if (bestTrade && bestProfit >= MINIMUM_PROFIT_THRESHOLD) {
 			await executeTrade(bestTrade, amountToTrade);
 		} else {
-			console.log('No profitable trade found');
+			console.log('No profitable trade found or profit below threshold.');
+            bot.sendMessage(telegramChatId, 'No profitable trade found or profit below threshold.')
 		}
 	} catch (error) {
 		console.error('Error evaluating pairs across DEXs:', error.message);
@@ -308,11 +314,10 @@ const evaluateTriangularArbitrage = async () => {
 						);
 						bot.sendMessage(
 							telegramChatId,
-							`Insufficient balance for tokens: \n
-						${token1Address},\n
-						${token2Address},\n
-						${token3Address}
-                        `
+							`Insufficient balance for tokens:,\n
+							${token1Address},
+							${token2Address},
+							${token3Address}`
 						);
 						continue;
 					}
@@ -364,7 +369,7 @@ const evaluateTriangularArbitrage = async () => {
 					const profit = trade3.outputAmount.subtract(
 						ethers.parseUnits(amountToTrade.toString(), pair1.token0.decimals)
 					);
-					if (profit.gt(0)) {
+					if (profit.gt(0) || profit.gt(MINIMUM_PROFIT_THRESHOLD)) {
 						console.log(
 							`Triangular Arbitrage Opportunity: ${token1Address} -> ${token2Address} -> ${token3Address}`
 						);
