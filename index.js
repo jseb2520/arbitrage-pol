@@ -76,9 +76,9 @@ const fetchTopTokens = async () => {
  */
 const estimateGasCost = async (trade) => {
 	const gasPrice = await provider.getGasPrice();
-	const adjustedGasPrice = (gasPrice * 110n) / 100n; // Adding a 10% buffer
-	const gasEstimate = 200_000n; // Set a reasonable estimate
-	return adjustedGasPrice * gasEstimate;
+	const adjustedGasPrice = gasPrice.mul(110n).div(100n); // Adding a 10% buffer
+	const gasEstimate = ethers.BigNumber.from(200_000n); // Set a reasonable estimate
+	return adjustedGasPrice.mul(gasEstimate);
 };
 
 /**
@@ -166,6 +166,12 @@ const fetchPairs = async (token1Address, token2Address) => {
 	}
 };
 
+const stochasticDecision = (trade, profit, threshold) => {
+	const probability = Math.random(); // Generates a number between 0 and 1
+	const profitProbability = profit.div(threshold).toNumber(); // Normalized profit
+	return profitProbability > probability;
+};
+
 /**
  * Evaluates token pairs across Uniswap and SushiSwap DEXs, finds the most profitable trade, and executes it.
  */
@@ -176,6 +182,9 @@ const evaluatePairsAcrossDEXs = async () => {
 	let bestProfit = 0n;
 
 	try {
+		const minimumProfitThreshold = ethers.parseUnits(
+			process.env.MINIMUM_PROFIT_THRESHOLD || '0.001'
+		);
 		for (let i = 0; i < tokenList.length; i++) {
 			for (let j = i + 1; j < tokenList.length; j++) {
 				const token1Address = tokenList[i].address;
@@ -232,17 +241,23 @@ const evaluatePairsAcrossDEXs = async () => {
 					gasCost
 				);
 
-				if (potentialProfit.gt(bestProfit)) {
+				if (potentialProfit.gt(minimumProfitThreshold)) {
 					bestProfit = potentialProfit;
 					bestTrade = bestCurrentTrade;
 				}
 			}
 		}
 
-		if (bestTrade && bestProfit.gt(ethers.BigNumber.from(0))) {
+		const profitThreshold = ethers.parseUnits('0.001', 'ether'); // Example threshold
+
+		if (
+			bestTrade &&
+			(bestProfit.gt(0n) ||
+				stochasticDecision(bestTrade, bestProfit, profitThreshold))
+		) {
 			await executeTrade(bestTrade);
 		} else {
-			console.log('No profitable trade found');
+			console.log('No profitable trade found or stochastic decision was no');
 		}
 	} catch (error) {
 		console.error('Error evaluating pairs across DEXs:', error.message);
