@@ -166,6 +166,20 @@ const fetchPairs = async (token1Address, token2Address) => {
 	}
 };
 
+/**
+ * Makes a stochastic decision based on the trade's profit and a threshold.
+ *
+ * @param {Trade} trade - The trade to make a decision for.
+ * @param {BigNumber} profit - The profit of the trade.
+ * @param {BigNumber} threshold - The minimum profit threshold.
+ * @returns {boolean} - True if the trade is profitable and the stochastic decision is yes, false otherwise.
+ * @example
+ * const trade = ...; // Some trade object
+ * const profit = ...; // Some profit value
+ * const threshold = ethers.parseUnits('0.001', 'ether'); // Example threshold
+ * const decision = stochasticDecision(trade, profit, threshold);
+ * console.log(decision); // Output: true or false
+ */
 const stochasticDecision = (trade, profit, threshold) => {
 	const probability = Math.random(); // Generates a number between 0 and 1
 	const profitProbability = profit.div(threshold).toNumber(); // Normalized profit
